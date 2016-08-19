@@ -41,7 +41,7 @@ AK2_DIR=$KERNEL_DIR/AnyKernel2
 
 ## release out directory
 RELEASE_DIR=$PWD
-JERRICA_MI_RELEASE=Jerrica-MK-v1.1-$JERRICA_POSTFIX.zip
+JERRICA_MI_RELEASE=-Jerrica-MK-PremierFinale-$JERRICA_POSTFIX.zip
 
 ## make jobs
 MAKE_JOBS=10
