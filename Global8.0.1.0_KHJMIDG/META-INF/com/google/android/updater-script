@@ -1,0 +1,32 @@
+ui_print("***********************************************");
+ui_print("_______________________________________________");
+ui_print("Reverting to Stock MiUi8 KitKat...");
+ui_print("Tested only on Global8.0.1.0_KHJMIDG build!");
+ui_print("_______________________________________________");
+ui_print("%%% Prepared by premaca (Prema Chand Alugu) %%%");
+ui_print("***********************************************");
+package_extract_file("boot.img", "/dev/block/bootdevice/by-name/boot");
+mount("ext4", "EMMC", "/dev/block/bootdevice/by-name/system", "system");
+run_program("/sbin/busybox", "mount", "/system");
+package_extract_dir("system", "/system");
+ui_print("Setting permissions...");
+set_metadata_recursive("/system/lib/modules", "uid", 0, "gid", 0, "dmode", 0755, "fmode",0644, "capabilities", 0x0, "selabel", "u:object_r:system_file:s0");
+
+set_metadata("/system/lib/modules/pronto/pronto_wlan.ko", "uid", 0, "gid", 0, "mode", 0644);
+set_metadata("/system/lib/modules/radio-iris-transport.ko", "uid", 0, "gid", 0, "mode", 0644);
+set_metadata("/system/etc/firmware/wlan/prima/WCNSS_cfg.dat", "uid", 0, "gid", 0, "mode", 0644);
+
+symlink("/system/lib/modules/pronto/pronto_wlan.ko", "/system/lib/modules/wlan.ko");
+set_metadata("/system/lib/modules/wlan.ko", "uid", 0, "gid", 0, "mode", 0644);
+
+unmount("/system");
+show_progress(0.500000, 0);
+
+package_extract_dir("data", "/data");
+ui_print("Setting permissions...");
+
+set_metadata("/data/misc/wifi/WCNSS_qcom_cfg.ini", "uid", 0, "gid", 0, "mode", 0600);
+unmount("/data");
+
+ui_print(" ");
+ui_print("Reverted to Stock MiUi8 KitKat Kernel Successfully !!!");
