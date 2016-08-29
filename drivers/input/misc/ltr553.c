@@ -48,6 +48,10 @@
 #include <linux/wakelock.h>
 #include <linux/hardware_info.h>
 
+#ifdef CONFIG_PSENSOR_ONDEMAND_STATE
+#include <linux/input/ltr553.h>
+#endif
+
 #define SENSOR_NAME		"proximity"
 #define LTR553_DRV_NAME		"ltr553"
 #define LTR553_MANUFAC_ID	0x05
@@ -337,6 +341,10 @@ static struct sensors_classdev sensors_proximity_cdev = {
 	.sensors_poll_delay = NULL,
 };
 
+#ifdef CONFIG_PSENSOR_ONDEMAND_STATE
+static struct sensors_classdev *proximity_sensor_dev = NULL;
+#endif
+
 static int ltr553_chip_reset(struct i2c_client *client)
 {
 	int ret;
@@ -613,6 +621,98 @@ static int ltr553_als_read(struct i2c_client *client)
 #endif
 		return luxdata;
 }
+
+#ifdef CONFIG_PSENSOR_ONDEMAND_STATE
+int ltr553_ps_ondemand_state (void)
+{
+    struct ltr553_data *data = container_of(proximity_sensor_dev,
+	    struct ltr553_data, ps_cdev);
+    struct i2c_client *client = data->client;
+    int contr_data;
+    int als_ps_status;
+    int psval_lo, psval_hi;
+    bool powered_on = false;
+    int proximity_state = LTR553_ON_DEMAND_RESET;
+    u32	ondemand_ps_state = 0;
+    int psdata;
+    static int val_temp_ondemand = 1;
+
+    /* Enable ps sensor */
+    ltr553_ps_reg_init(client);
+
+    ltr553_set_ps_threshold(client, LTR553_PS_THRES_LOW_0, 0);
+    ltr553_set_ps_threshold(client, LTR553_PS_THRES_UP_0, data->platform_data->prox_threshold);
+    if (i2c_smbus_write_byte_data(client, LTR553_PS_CONTR, reg_tbl[REG_PS_CONTR].curval) < 0) {
+	pr_err("%s: enable=(%d) failed!\n", __func__, 1);
+	goto exit;
+    }
+    contr_data = i2c_smbus_read_byte_data(client, LTR553_PS_CONTR);
+    if (contr_data != reg_tbl[REG_PS_CONTR].curval) {
+
+	pr_err("%s: enable=(%d) failed!\n", __func__, 1);
+	i2c_smbus_write_byte_data(client, LTR553_PS_CONTR, MODE_PS_StdBy);
+	goto exit;
+    }
+
+    msleep(WAKEUP_DELAY);
+    powered_on = true;
+
+    data->ps_state = 1;
+    input_report_abs(data->input_dev_ps, ABS_DISTANCE, data->ps_state);
+
+    /* Wait for data ready */
+    psval_lo = i2c_smbus_read_byte_data(client, LTR553_PS_DATA_0);
+    if (psval_lo < 0) {
+	goto exit;
+    }
+    psval_hi = i2c_smbus_read_byte_data(client, LTR553_PS_DATA_1);
+    if (psval_hi < 0) {
+	goto exit;
+    }
+    psdata = ((psval_hi & 7) << 8) | psval_lo;
+    if (psdata > data->platform_data->prox_threshold) {
+	data->ps_state = 0;
+	ltr553_set_ps_threshold(client, LTR553_PS_THRES_LOW_0, data->platform_data->prox_hsyteresis_threshold);
+	ltr553_set_ps_threshold(client, LTR553_PS_THRES_UP_0, 0x07ff);
+	val_temp_ondemand = 0;
+    } else if (psdata < data->platform_data->prox_hsyteresis_threshold) {
+	data->ps_state = 1;
+	ltr553_set_ps_threshold(client, LTR553_PS_THRES_LOW_0, 0);
+	ltr553_set_ps_threshold(client, LTR553_PS_THRES_UP_0, data->platform_data->prox_threshold);
+	val_temp_ondemand = 1;
+    } else {
+	data->ps_state = val_temp_ondemand;
+    }
+
+    if (ps_state_last != data->ps_state) {
+	input_report_abs(data->input_dev_ps, ABS_DISTANCE, data->ps_state);
+	input_sync(data->input_dev_ps);
+	ps_state_last = data->ps_state;
+	data->distance_flag = data->ps_state;
+    }
+
+    ondemand_ps_state = ps_state_last;
+
+    /* disable ps_sensor */
+    i2c_smbus_write_byte_data(client, LTR553_PS_CONTR, MODE_PS_StdBy);
+    ps_state_last = 1;
+    i2c_smbus_read_byte_data(client, LTR553_PS_CONTR);
+
+    powered_on = false;
+    proximity_state = (ondemand_ps_state == 0) ? LTR553_ON_DEMAND_COVERED 
+	: LTR553_ON_DEMAND_UNCOVERED;
+
+exit:
+    if (powered_on) {
+	i2c_smbus_write_byte_data(client, LTR553_PS_CONTR, MODE_PS_StdBy);
+	ps_state_last = 1;
+	i2c_smbus_read_byte_data(client, LTR553_PS_CONTR);
+    }
+    mutex_unlock(&data->op_lock);
+
+    return (proximity_state);
+}
+#endif /* CONFIG_PSENSOR_ONDEMAND_STATE */
 
 static void ltr553_ps_work_func(struct work_struct *work)
 {
@@ -1720,6 +1820,9 @@ int ltr553_probe(struct i2c_client *client, const struct i2c_device_id *id)
 	dev_dbg(&client->dev, "probe succece\n");
 
 	msm_sensor_power_on = msm_sensor_camera_power_on;
+#ifdef CONFIG_PSENSOR_ONDEMAND_STATE
+	proximity_sensor_dev = &data->ps_cdev;
+#endif
 	return 0;
 
 exit_unregister_als_class:
