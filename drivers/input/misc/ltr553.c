@@ -629,7 +629,6 @@ int ltr553_ps_ondemand_state (void)
 	    struct ltr553_data, ps_cdev);
     struct i2c_client *client = data->client;
     int contr_data;
-    int als_ps_status;
     int psval_lo, psval_hi;
     bool powered_on = false;
     int proximity_state = LTR553_ON_DEMAND_RESET;
