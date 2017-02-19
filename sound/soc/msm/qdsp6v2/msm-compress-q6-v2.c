@@ -2248,54 +2248,6 @@ static int msm_compr_set_next_track_param(struct snd_compr_stream *cstream,
 	return ret;
 }
 
-static int msm_compr_set_next_track_param(struct snd_compr_stream *cstream,
-				union snd_codec_options *codec_options)
-{
-	struct msm_compr_audio *prtd;
-	struct audio_client *ac;
-	int ret = 0;
-
-	pr_debug("%s\n", __func__);
-	if (!codec_options || !cstream)
-		return -EINVAL;
-
-	prtd = cstream->runtime->private_data;
-	if (!prtd || !prtd->audio_client) {
-		pr_err("%s: prtd or audio client is NULL\n", __func__);
-		return -EINVAL;
-	}
-
-	ac = prtd->audio_client;
-
-	pr_debug("%s: got codec options for codec type %u",
-		__func__, prtd->codec);
-	switch (prtd->codec) {
-	case FORMAT_WMA_V9:
-	case FORMAT_WMA_V10PRO:
-	case FORMAT_FLAC:
-	case FORMAT_VORBIS:
-	case FORMAT_ALAC:
-	case FORMAT_APE:
-		memcpy(&(prtd->gapless_state.codec_options),
-			codec_options,
-			sizeof(union snd_codec_options));
-		ret = msm_compr_send_media_format_block(cstream,
-						ac->stream_id, true);
-		if (ret < 0) {
-			pr_err("%s: failed to send media format block\n",
-				__func__);
-		}
-		break;
-
-	default:
-		pr_debug("%s: Ignore sending CMD Format block\n",
-			__func__);
-		break;
-	}
-
-	return ret;
-}
-
 static int msm_compr_volume_put(struct snd_kcontrol *kcontrol,
 				struct snd_ctl_elem_value *ucontrol)
 {
