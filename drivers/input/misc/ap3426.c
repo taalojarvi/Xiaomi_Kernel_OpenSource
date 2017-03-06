@@ -576,9 +576,7 @@ static ssize_t ps_enable_show(struct device *dev, struct device_attribute *attr,
 {
 	int32_t ret;
 
-	ret = misc_ls_opened;
-	return scnprintf(buf, PAGE_SIZE, "%d\n", ret);
-}
+	timestamp = ktime_get_boottime();
 
 static ssize_t ps_enable_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t size)
 {
@@ -1456,14 +1454,33 @@ static int ap3426_probe(struct i2c_client *client,
 	err = sysfs_create_group(&data->client->dev.kobj, &ap3426_attr_group);
 
 
-	data->ap3426_wq = create_singlethread_workqueue("ap3426_wq");
-	if (!data->ap3426_wq) {
-		LDBG("%s: create ap3426_wq workqueue failed\n", __func__);
-		err = -ENOMEM;
-		goto err_create_wq_failed;
+	/* input device should hold a 200ms wake lock */
+	device_init_wakeup(&di->input_proximity->dev, 1);
+
+	di->als_cdev = als_cdev;
+	di->als_cdev.sensors_enable = ap3426_cdev_enable_als;
+	di->als_cdev.sensors_poll_delay = ap3426_cdev_set_als_delay;
+	di->als_cdev.sensors_flush = ap3426_cdev_als_flush;
+	res = sensors_classdev_register(&di->input_light->dev, &di->als_cdev);
+	if (res) {
+		dev_err(&client->dev, "sensors class register failed.\n");
+		goto err_register_als_cdev;
 	}
 	INIT_WORK(&data->ap3426_work, ap3426_work_handler);
 
+	di->ps_cdev = ps_cdev;
+	di->ps_cdev.sensors_enable = ap3426_cdev_enable_ps;
+	di->ps_cdev.sensors_poll_delay = ap3426_cdev_set_ps_delay;
+	di->ps_cdev.sensors_flush = ap3426_cdev_ps_flush;
+	di->ps_cdev.sensors_calibrate = ap3426_cdev_ps_calibrate;
+	di->ps_cdev.sensors_write_cal_params = ap3426_cdev_ps_write_cal;
+	di->ps_cdev.params = di->calibrate_buf;
+	res = sensors_classdev_register(&di->input_proximity->dev,
+			&di->ps_cdev);
+	if (res) {
+		dev_err(&client->dev, "sensors class register failed.\n");
+		goto err_register_ps_cdev;
+	}
 
 	if (err)
 		goto err_power_ctl;

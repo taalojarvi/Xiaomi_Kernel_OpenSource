@@ -1,4 +1,4 @@
-/* Copyright (c) 2008-2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2008-2016, The Linux Foundation. All rights reserved.
  * Copyright (C) 2016 XiaoMi, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -329,6 +329,7 @@ fail:
 	return -ENOMEM;
 }
 
+
 static int diag_remove_client_entry(struct file *file)
 {
 	int i = -1;
@@ -336,7 +337,7 @@ static int diag_remove_client_entry(struct file *file)
 	struct diag_dci_client_tbl *dci_entry = NULL;
 	unsigned long flags;
 
-	if (!driver)
+	if(!driver)
 		return -ENOMEM;
 
 	mutex_lock(&driver->diag_file_mutex);
@@ -706,7 +707,7 @@ static int diag_process_userspace_remote(int proc, void *buf, int len)
 	int bridge_index = proc - 1;
 
 	if (!buf || len < 0) {
-		pr_err("diag: Invalid input in %s, buf: %p, len: %d\n",
+		pr_err("diag: Invalid input in %s, buf: %pK, len: %d\n",
 		       __func__, buf, len);
 		return -EINVAL;
 	}
@@ -1876,7 +1877,6 @@ static ssize_t diagchar_write(struct file *file, const char __user *buf,
 						 POOL_TYPE_HDLC);
 	if (!buf_hdlc) {
 		ret = -ENOMEM;
-		driver->used = 0;
 		goto fail_free_copy;
 	}
 	if (HDLC_OUT_BUF_SIZE < (2*payload_size) + 3) {
