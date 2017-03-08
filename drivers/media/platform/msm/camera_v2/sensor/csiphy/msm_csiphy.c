@@ -16,7 +16,6 @@
 #include <linux/of.h>
 #include <linux/module.h>
 #include <linux/irqreturn.h>
-#include <mach/vreg.h>
 #include <soc/qcom/socinfo.h>
 #include "msm_csiphy.h"
 #include "msm_sd.h"

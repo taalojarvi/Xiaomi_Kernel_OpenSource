@@ -21,6 +21,7 @@
 #include <linux/platform_device.h>
 #include <media/v4l2-device.h>
 #include <media/v4l2-subdev.h>
+#include "msm_camera_io_util.h"
 #include "msm_jpeg_hw.h"
 
 #define JPEG_8974_V1 0x10000000

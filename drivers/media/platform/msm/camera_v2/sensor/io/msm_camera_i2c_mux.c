@@ -14,8 +14,10 @@
 #include <linux/clk.h>
 #include <linux/io.h>
 #include <linux/module.h>
+/*
 #include <mach/board.h>
 #include <mach/camera.h>
+*/
 #include "msm_camera_i2c_mux.h"
 
 /* TODO move this somewhere else */
