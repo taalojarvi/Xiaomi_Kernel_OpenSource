@@ -94,6 +94,7 @@ struct crypto_ahash {
 		      unsigned int keylen);
 
 	unsigned int reqsize;
+	bool has_setkey
 	struct crypto_tfm base;
 };
 
